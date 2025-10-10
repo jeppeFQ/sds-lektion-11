@@ -1,5 +1,5 @@
 ---
-title: "Dataanalyse"
+title: "Dataanalyse I"
 subtitle: ""
 author: "Jeppe Fjeldgaard Qvist"
 date: today
@@ -43,12 +43,722 @@ execute:
 
 ## Dagens program
 
+1. Sprogmodeller (resterende fra lektion 10)
+2. Gennemgange af meningsfulde eksempler på en SDS analyse 
+
+# Sprogmodeller (slides fra L10)
+
+## Analyse-eksempel 1
+
+> Komparativ (diskurs/tekst-)analyse af ekstremistiske fora
+
+* **Data**: 
+    * *Struktur*: tekststørrelse, struktur, kvalitet
+    * *(Etiske) overvejelser*: Anonymisering? Forskeransvar?
+    * *Begrænsninger*: Bevidst bias; ikke repræsentativt for samfundet. Echo chamber-effekt maksimeret? Bevidst provokerende indhold? Bots? 
+        * Hvad er kilderne? (mainstream media vs. alternativt medie/blog)
+        * **Hvordan er data indsamlet? (web scraping, API, manuel)**
+        * Hvilke bias kan være indbygget i udvælgelsen?
+        * **Hvad er unit of analysis? (artikel, afsnit, sætning)**
+    * *Muligheder*: Forstå sproglige markører i radikaliserede kontekster. **Hvad ellers?** 
+
+---
+
+::: {style="font-size: 0.8em;"}
+```{python}
+#| echo: true
+import pandas as pd
+import numpy as np
+
+# HVAD GØR VI HER?
+df1 = pd.read_json('/Users/jeppefl/Library/CloudStorage/OneDrive-AalborgUniversitet/01_work/01_undervisning/02_sds1/03_data/right-wing-sites/DKSamling_20230627.json')
+
+df2 = pd.read_json('/Users/jeppefl/Library/CloudStorage/OneDrive-AalborgUniversitet/01_work/01_undervisning/02_sds1/03_data/right-wing-sites/trykkefrihed_20220824.json')
+
+# HVAD GØR VI HER?
+df1['source'] = 'DKsamling'
+df2['source'] = 'Trykkefrihed'
+
+# HVAD GØR VI HER? OG HVORFOR
+df1['text'] = df1['article_content']
+df2['text'] = df2['post content']
+
+# HVAD GØR VI HER? OG HVORFOR
+df = pd.concat([df1[['text', 'source']], df2[['text', 'source']]])
+df = df.reset_index(drop=True)
+
+# Første beskrivelse af data
+print(f"Total antal dokumenter: {len(df)}")
+print(f"\nDKsamling: {len(df[df['source']=='mainstream_media'])}")
+print(f"\nTrykkefrihed: {len(df[df['source']=='alternative_blogs'])}")
+print(f"\nManglende værdier:\n{df.isnull().sum()}")
+print(f"\nTomme tekster: {(df['text'].str.len() == 0).sum()}")
+print("\nEksempel på en tekst:\n")
+print(df['text'].iloc[0][:500])
+
+```
+:::
+
+---
+
+### Præ-processering af data I
+
+```{python}
+#| echo: true
+import re
+
+example_text = df['text'].iloc[0]
+
+print(example_text[:300])
+print(f"Længde: {len(example_text)} tegn\n")
+```
+
+---
+
+```{python}
+#| echo: true
+# HVAD GØR VI HER?
+text_1 = re.sub(r'<[^>]+>', '', example_text)
+
+# HVAD GØR VI HER?
+text_2 = re.sub(r'http\S+|www.\S+', '', text_1)
+
+# HVAD GØR VI HER?
+text_3 = re.sub(r'\S+@\S+', '', text_2)
+
+# HVAD GØR VI HER?
+text_4 = re.sub(r'\s+', ' ', text_3).strip()
+
+# HVAD GØR VI HER?
+text_clean = text_4.lower()
+```
+
+---
+
+```{python}
+#| echo: true
+print("Orginal tekst:")
+print(example_text[:300])
+print(f"Længde: {len(example_text)} tegn\n")
+
+print("Clean tekst:")
+print(text_clean[:300])
+print(f"Længde: {len(text_clean)} tegn\n")
+```
+
+---
+
+### Samme process på en hel DataFrame 
+
+```{python}
+#| echo: true
+# Fjern HTML
+df['text'] = df['text'].apply(lambda x: re.sub(r'<[^>]+>', '', x) if pd.notna(x) else '')
+
+# Fjern URLs
+df['text'] = df['text'].apply(lambda x: re.sub(r'http\S+|www.\S+', '', x))
+
+# Fjern emails
+df['text'] = df['text'].apply(lambda x: re.sub(r'\S+@\S+', '', x))
+
+# Normaliser whitespace
+df['text'] = df['text'].apply(lambda x: re.sub(r'\s+', ' ', x).strip())
+
+# Lowercase
+df['text_clean'] = df['text'].str.lower()
+```
+
+---
+
+### Præ-processering af data II
+
+::: {style="font-size: 0.8em;"}
+```{python}
+#| echo: true
+import spacy
+from tqdm import tqdm
+
+# HVAD GØR VI HER? HVAD SKAL VI HUSKE FOR DET VIRKER? 
+nlp = spacy.load("da_core_news_lg")
+
+sample = df['text_clean'].iloc[0]
+
+# HVAD GØR VI HER? 
+doc = nlp(sample)
+
+all_tokens = [token.text for token in doc]
+print(all_tokens)
+print(f"\nTotal: {len(all_tokens)} tokens\n")
+
+```
+:::
+
+---
+
+::: {style="font-size: 0.8em;"}
+```{python}
+#| echo: true
+# Fjern punktuation
+tokens_no_punct = [token.text for token in doc if not token.is_punct]
+print(tokens_no_punct)
+print(f"\nEfter fjernelse af punktuation: {len(tokens_no_punct)} tokens\n")
+```
+:::
+
+---
+
+::: {style="font-size: 0.8em;"}
+```{python}
+#| echo: true
+# Fjern stopord
+tokens_no_stop = [token.text for token in doc if not token.is_stop and not token.is_punct]
+print(tokens_no_stop)
+print(f"\nEfter fjernelse af stopord: {len(tokens_no_stop)} tokens")
+```
+:::
+
+---
+
+::: {style="font-size: 0.8em;"}
+```{python}
+#| echo: true
+# Lemmatisering
+tokens_lemma = [token.lemma_ for token in doc if not token.is_stop and not token.is_punct]
+print(tokens_lemma)
+print(f"\nEfter lemmatisering: {len(tokens_lemma)} tokens")
+```
+:::
+
+---
+
+::: {style="font-size: 0.8em;"}
+```{python}
+tokens_filtered = [token.lemma_ for token in doc 
+                    if not token.is_stop 
+                    and not token.is_punct 
+                    and token.pos_ in ['NOUN', 'ADJ']]
+print(tokens_filtered)                  
+print(f"\nKun NOUN + ADJ: {len(tokens_filtered)} tokens")
+```
+:::
+
+# Hvad beslutter vi os for? 
+
+## Fuld pre-processing m. beslutning
+
+> fjern stopord + lemmatisering (tokens_lemma)
+
+```{python}
+# Initialiser tom liste til tokens
+all_tokens = []
+
+# Process i batches (for fart ...)
+batch_size = 50
+texts = df['text_clean'].tolist()
+
+for doc in tqdm(nlp.pipe(texts, batch_size=batch_size), total=len(texts)):
+
+    tokens = [token.lemma_ for token in doc 
+              if not token.is_stop 
+              and not token.is_punct 
+              and not token.is_space]
+    all_tokens.append(tokens)
+
+# Tilføj til dataframe
+df['tokens'] = all_tokens
+
+# Beregn antal tokens
+df['n_tokens'] = df['tokens'].apply(len)
+
+print(f"\nGennemsnitlig antal tokens: {df['n_tokens'].mean():.1f}")
+print(f"Median antal tokens: {df['n_tokens'].median():.1f}")
+print(f"Min: {df['n_tokens'].min()}, Max: {df['n_tokens'].max()}")
+```
+
+--- 
+
+### Teknik-noter
+
+::: {style="font-size: 0.8em;"}
+1. `batch_size = 50` betyder, at vi vil sende 50 tekster ad gangen til spaCy-pipelinen.
+2. `texts = ...` henter kolonnen text_clean fra DataFrame’en og konverterer den til en almindelig Python-liste.
+3. `nlp.pipe()` er spaCy’s hurtigste måde at køre pipeline’n på mange tekster. I stedet for at kalde nlp(text) én ad gangen, streamer pipe() teksterne igennem modellen i batches.
+    * `tqdm(...` er blot en smart statusbar, der viser hvor lang tid vi skal vente.
+    * `doc` er et spaCy Doc-objekt, som repræsenterer én af teksterne i batchen.
+4. `tokens = [token.lemma_ for ...` er en list comprehension, som skaber en liste af tokens for hvert dokument.
+    * `token.lemma_` henter lemmatiseret form af hver token
+    `if`-betingelserne filtrerer tokens:
+      * `token.is_stop`: udelukker stopord (fx “og”, “men”, “ikke”),
+      * `token.is_punct`: udelukker tegnsætning,
+      * `token.is_space`: udelukker mellemrum.
+5. `all_tokens.append(tokens)` tilføjer listen af tokens for det aktuelle dokument til all_tokens. Efter loopet vil all_tokens have samme længde som texts, dvs. én liste pr. tekst.
+6. `df['tokens'] = all_tokens` tilføjer en ny kolonne til df, hvor hver række (dokument) nu indeholder listen af tokens.
+7. `df['n_tokens'] = df['tokens'].apply(len)` apply(len) beregner længden af hver liste i 'tokens' og gemmer resultatet i en ny kolonne 'n_tokens'.
+:::
+
+---
+
+## Vocabular-analyse 
+
+```{python}
+from collections import Counter
+
+# Flatten alle tokens til én lang liste
+all_words = []
+for token_list in df['tokens']:
+    all_words.extend(token_list)
+
+print(all_words[:100])
+print(f"\nTotal antal ord (med gentagelser): {len(all_words)}")
+```
+
+---
+
+```{python}
+# Tæl hvor ofte hvert ord forekommer
+word_counts = Counter(all_words)
+
+print(f"Unikke ord (vocabulary size): {len(word_counts)}")
+```
+
+---
+
+```{python}
+# Top 20 mest anvendte
+print("\nTop 20 mest anvendte ord:")
+for word, count in word_counts.most_common(20):
+    print(f"  {word:20s}: {count:4d}")
 
 
+# DataFrame med 100 mest almindelige ord til senere visualisering
+vocab_df = pd.DataFrame(word_counts.most_common(100), 
+                        columns=['word', 'frequency'])
 
+# Se fordelingen
+print("\nOrd der forekommer kun én gang (hapax legomena):")
+singletons = [word for word, count in word_counts.items() if count == 1]
+print(f"  Antal: {len(singletons)}")
+print(f"  Eksempler: {singletons[:10]}")
+```
 
+---
+#### Komparativt 
 
+```{python}
+DKsamling_tokens = []
+Trykkefrihed_tokens = []
 
+for idx, row in df.iterrows():
+    if row['source'] == 'DKsamling':
+        DKsamling_tokens.extend(row['tokens'])
+    else:
+        Trykkefrihed_tokens.extend(row['tokens'])
 
+DKsamling_vocab = Counter(DKsamling_tokens)
+Trykkefrihed_vocab = Counter(Trykkefrihed_tokens)
 
+print(f"DKsamling vocab: {len(DKsamling_vocab)}")
+print(f"Trykkefrihed vocab: {len(Trykkefrihed_vocab)}")
+```
+
+---
+
+```{python}
+print("\nTop 10 ord i DKsamling:")
+for word, count in DKsamling_vocab.most_common(10):
+    print(f"  {word}: {count}")
+
+print("\nTop 10 ord i Trykkefrihed:")
+for word, count in Trykkefrihed_vocab.most_common(10):
+    print(f"  {word}: {count}")
+```
+
+---
+
+### Teknik-noter 
+
+1. `DKsamling_tokens = []`, `Trykkefrihed_tokens = []` opretter to tomme Python-lister. De skal hver især indeholde alle tokens fra teksterne i den pågældende gruppe.
+2. `df.iterrows()` går række for række gennem dataframen.
+    * `idx` er rækkens indeks (nummer eller label)
+    * `row` er et pandas Series-objekt, der indeholder alle kolonner for den pågældende række.
+    * *Hver iteration repræsenterer altså ét dokument (én tekst).*
+3. `if row['source'] == 'DKsamling': ...` tjekker værdien af kolonnen source for hver række. Hvis kilden er "DKsamling", så tilføjes tokens fra denne tekst til DKsamling_tokens. Ellers (dvs. hvis source ikke er “DKsamling”) tilføjes tokens til Trykkefrihed_tokens.
+    * `.extend()` bruges i stedet for `.append()` fordi row['tokens'] selv er en liste af tokens.
+4. `Counter()` (fra collections-modulet) laver en ordfrekvens-ordbog. Den tæller hvor mange gange hvert token optræder. Resultatet er et dictionary-lignende objekt. 
+
+### Præ-processering af data III: feature extraction 
+
+```{python}
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+
+# Vi skal konvertere tokens tilbage til strings for sklearn kan arbejde med data
+df['tokens_string'] = df['tokens'].apply(lambda x: ' '.join(x))
+
+# Count Vectorizer (metode 1)
+count_vectorizer = CountVectorizer(
+    max_features=1000,  # Top 1000 ord
+    min_df=2,           # Skal forekomme i mindst 2 dokumenter
+    max_df=0.8          # Max i 80% af dokumenter
+)
+
+X_counts = count_vectorizer.fit_transform(df['tokens_string'])
+
+print(f"Matrix shape: {X_counts.shape}")
+print(f"  - {X_counts.shape[0]} dokumenter")
+print(f"  - {X_counts.shape[1]} features (ord)")
+
+sparsity = 1.0 - (X_counts.nnz / (X_counts.shape[0] * X_counts.shape[1]))
+print(f"\nSparsity: {sparsity:.2%}")
+print("  (hvor stor andel af matrix er 0)")
+```
+
+---
+
+```{python}
+
+# TF-IDF Vectorizer (metode 2)
+
+tfidf_vectorizer = TfidfVectorizer(
+    max_features=1000,
+    min_df=2,
+    max_df=0.8
+)
+
+X_tfidf = tfidf_vectorizer.fit_transform(df['tokens_string'])
+
+print(f"Matrix shape: {X_tfidf.shape}")
+print(f"  - {X_tfidf.shape[0]} dokumenter")
+print(f"  - {X_tfidf.shape[1]} features (ord)")
+
+sparsity_tfidf = 1.0 - (X_tfidf.nnz / (X_tfidf.shape[0] * X_tfidf.shape[1]))
+print(f"Sparsity: {sparsity_tfidf:.2%}")
+```
+
+---
+
+### Sammeligning af feature extraction metode 
+
+```{python}
+# Tag et eksempel dokument
+doc_idx = 0
+
+# Hent feature names
+feature_names = tfidf_vectorizer.get_feature_names_out()
+
+# Count værdier
+count_vector = X_counts[doc_idx].toarray().flatten()
+top_count_indices = count_vector.argsort()[-10:][::-1]
+
+print("\nTop 10 ord (COUNT):")
+for idx in top_count_indices:
+    print(f"  {feature_names[idx]:20s}: {count_vector[idx]:.0f}")
+
+```
+
+---
+
+TF-IDF giver lavere vægt til ord der er meget almindelige og højere vægt til ord der er distinkte for dokumentet
+
+```{python}
+# TF-IDF værdier
+tfidf_vector = X_tfidf[doc_idx].toarray().flatten()
+top_tfidf_indices = tfidf_vector.argsort()[-10:][::-1]
+
+print("\nTop 10 ord (TF-IDF):")
+for idx in top_tfidf_indices:
+    print(f"  {feature_names[idx]:20s}: {tfidf_vector[idx]:.3f}")
+```
+
+## $K$-means Clustering
+
+```{python}
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+
+k_values = range(2, 11)
+silhouette_scores = []
+inertias = []
+
+for k in k_values:
+    # Fit K-means
+    kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(X_tfidf)
+    
+    # Beregn silhouette score (højere er bedre)
+    score = silhouette_score(X_tfidf, cluster_labels)
+    silhouette_scores.append(score)
+    
+    # Gem inertia (lavere er bedre)
+    inertias.append(kmeans.inertia_)
+    
+    print(f"K={k}: silhouette={score:.3f}, inertia={kmeans.inertia_:.1f}")
+
+# Lav DataFrame til plotting
+elbow_df = pd.DataFrame({
+    'k': list(k_values),
+    'silhouette': silhouette_scores,
+    'inertia': inertias
+})
+
+```
+
+---
+
+```{python}
+# Normaliser begge metrics til 0-1 range for sammenligning
+elbow_df['silhouette_norm'] = (elbow_df['silhouette'] - elbow_df['silhouette'].min()) / (elbow_df['silhouette'].max() - elbow_df['silhouette'].min())
+elbow_df['inertia_norm'] = (elbow_df['inertia'] - elbow_df['inertia'].min()) / (elbow_df['inertia'].max() - elbow_df['inertia'].min())
+elbow_df['inertia_norm_inv'] = 1 - elbow_df['inertia_norm']  # Inverter så højere er bedre
+
+# Reshape til long format
+elbow_long = pd.DataFrame({
+    'k': list(elbow_df['k']) * 2,
+    'metric': ['Silhouette']*len(elbow_df) + ['Inertia (inverteret)']*len(elbow_df),
+    'value': list(elbow_df['silhouette_norm']) + list(elbow_df['inertia_norm_inv'])
+})
+
+p_combined = (ggplot(elbow_long, aes(x='k', y='value', color='metric'))
+ + geom_line(size=1.5)
+ + geom_point(size=3)
+ + theme_minimal()
+ + theme(figure_size=(10, 5))
+ + scale_x_continuous(breaks=range(2, 11))
+ + labs(title='Sammenligning af Cluster Kvalitet Metrics',
+        x='Antal Clusters (K)',
+        y='Normaliseret Score (højere = bedre)',
+        color='Metric'))
+
+p_combined
+```
+
+---
+
+```{python}
+# Vælg K
+best_k = 5
+
+# Fit med valgt K
+kmeans_final = KMeans(n_clusters=best_k, random_state=42, n_init=10)
+df['cluster'] = kmeans_final.fit_predict(X_tfidf)
+
+print("\nCluster fordeling:")
+print(df['cluster'].value_counts().sort_index())
+```
+
+---
+
+```{python}
+# Find karakteristiske ord for hver cluster
+for cluster_num in range(best_k):
+    # Find alle dokumenter i denne cluster
+    cluster_docs = X_tfidf[df['cluster'] == cluster_num]
+    
+    # Beregn gennemsnitlig TF-IDF værdi per ord
+    avg_tfidf = cluster_docs.mean(axis=0).A1
+    
+    # Find top ord
+    top_indices = avg_tfidf.argsort()[-15:][::-1]
+    top_words = [feature_names[idx] for idx in top_indices]
+    top_scores = [avg_tfidf[idx] for idx in top_indices]
+    
+    # Print
+    n_docs = (df['cluster'] == cluster_num).sum()
+    print(f"\n CLUSTER {cluster_num} (n={n_docs} dokumenter)")
+    for word, score in zip(top_words, top_scores):
+        print(f"   {word:20s}: {score:.3f}")
+```
+
+---
+
+### Komparativt 
+
+```{python}
+# Cross-tab mellem cluster og source
+
+crosstab = pd.crosstab(df['cluster'], df['source'])
+print("\nAntal dokumenter:")
+print(crosstab)
+
+# Normaliser til procent
+crosstab_pct = pd.crosstab(df['cluster'], df['source'], normalize='columns') * 100
+print("\nProcent af hver kilde:")
+print(crosstab_pct.round(1))
+```
+
+## Visualisering 
+
+```{python}
+from plotnine import *
+from sklearn.decomposition import PCA
+
+# Reducer dimensioner for at kunne visualisere
+pca = PCA(n_components=2, random_state=42)
+coords_2d = pca.fit_transform(X_tfidf.toarray())
+
+explained_var = pca.explained_variance_ratio_.sum()
+print(f"Forklaret varians med 2 komponenter: {explained_var:.1%}")
+
+# Lav DataFrame til plotting
+plot_df = pd.DataFrame({
+    'PC1': coords_2d[:, 0],
+    'PC2': coords_2d[:, 1],
+    'cluster': df['cluster'].astype(str),
+    'source': df['source'],
+    'n_tokens': df['n_tokens']
+})
+
+```
+
+* Vi har 1000 dimensioner (features) i vores data
+* Vi reducerer til kun 2 dimensioner for at kunne plotte
+* Det betyder vi MISTER 95.5% af informationen!
+* Dette er normalt for højdimensionelle tekstdata:
+    * Tekstdata er meget 'spredt' i mange dimensioner
+    * Det er svært at fange al information i kun 2D
+    * Vores plot er derfor en APPROKSIMATION
+* Men clustering arbejder i det fulde højdimensionelle rum. Så vores clusters er stadig valide, selvom plottet er simplificeret
+
+---
+
+```{python}
+pca_full = PCA(n_components=50, random_state=42)  # Test med 50
+pca_full.fit(X_tfidf.toarray())
+
+cumsum_var = np.cumsum(pca_full.explained_variance_ratio_)
+
+print("Forklaret varians ved forskellige antal komponenter:")
+for n in [2, 5, 10, 20, 30, 50]:
+    if n <= len(cumsum_var):
+        print(f"  {n:2d} komponenter: {cumsum_var[n-1]:.1%}")
+```
+
+```{python}
+# Simpel version uden forvirrende tærskler
+var_df = pd.DataFrame({
+    'n_components': range(1, min(51, len(cumsum_var)+1)),
+    'cum_variance': cumsum_var[:50]
+})
+
+p_var = (ggplot(var_df, aes(x='n_components', y='cum_variance'))
+ + geom_line(color='steelblue', size=1.5)
+ + geom_point(color='steelblue', size=2)
+ + theme_minimal()
+ + theme(figure_size=(10, 6))
+ + scale_y_continuous(labels=lambda l: [f'{x:.0%}' for x in l])
+ + labs(title='Kumulativ Forklaret Varians (PCA)',
+        x='Antal PCA Komponenter',
+        y='Forklaret Varians',
+        caption='For tekstdata er det normalt at have spredt information over mange dimensioner'))
+
+p_var
+```
+---
+
+```{python}
+# Scatter plot af clusters
+p1 = (ggplot(plot_df, aes(x='PC1', y='PC2', color='cluster', shape='source'))
+ + geom_point(size=3, alpha=0.7)
+ + theme_minimal()
+ + theme(figure_size=(10, 6))
+ + labs(title='Dokument Clusters (K-means på TF-IDF)',
+        x='Principal Component 1',
+        y='Principal Component 2',
+        color='Cluster',
+        shape='Kilde'))
+
+p1
+```
+
+---
+
+```{python}
+# Bar chart af cluster størrelser
+cluster_counts = df.groupby(['cluster', 'source']).size().reset_index(name='count')
+
+p2 = (ggplot(cluster_counts, aes(x='factor(cluster)', y='count', fill='source'))
+ + geom_col(position='dodge')
+ + theme_minimal()
+ + theme(figure_size=(10, 6))
+ + labs(title='Dokumentfordeling per Cluster og Kilde',
+        x='Cluster',
+        y='Antal dokumenter',
+        fill='Kilde'))
+
+p2
+```
+
+---
+
+```{python}
+# Boxplot af tekstlængde per cluster
+p3 = (ggplot(df, aes(x='factor(cluster)', y='n_tokens', fill='factor(cluster)'))
+ + geom_boxplot()
+ + theme_minimal()
+ + theme(figure_size=(10, 6))
+ + labs(title='Tekstlængde per Cluster',
+        x='Cluster',
+        y='Antal tokens')
+ + guides(fill=False))
+
+p3
+```
+
+---
+
+```{python}
+# Bar chart af top ord
+p4 = (ggplot(vocab_df.head(30), 
+             aes(x='reorder(word, frequency)', y='frequency'))
+ + geom_col(fill='steelblue')
+ + coord_flip()
+ + theme_minimal()
+ + theme(figure_size=(8, 10))
+ + labs(title='Top 30 Mest Frekvente Ord (efter pre-processing)',
+        x='',
+        y='Frekvens'))
+
+p4
+```
+
+---
+
+```{python}
+# Sammenlign gennemsnitlig tekstlængde
+avg_length = df.groupby('source')['n_tokens'].mean().reset_index()
+
+p5 = (ggplot(avg_length, aes(x='source', y='n_tokens', fill='source'))
+ + geom_col()
+ + theme_minimal()
+ + theme(figure_size=(8, 6))
+ + labs(title='Gennemsnitlig Tekstlængde per Kilde',
+        x='',
+        y='Antal tokens')
+ + guides(fill=False))
+
+p5
+```
+
+## Øvelse
+
+Se hvordan analysen er påvirket af: 
+
+* Vores pre-processing beslutninger:
+    * Hvad hvis vi havde beholdt stopord?
+    * Hvad hvis vi ikke havde lemmatiseret?
+    * Osv ... prøv ting ad og se om resultaterne ændrer sig. 
+
+Ændrer ovenstående på fortolkningerne: 
+
+* Giver vores clusters mere/mindre mening?
+    * Kan vi overhovedet fortolke dem substantielt hvis der er flere/færre k?
+
+Diskuter hvad kan forbedre analysen og hvilken vide analyse har bidraget med om de to tekstkilder?
+
+## Analyse-eksempel 2
+
+> Hvilke narrativer (og konspirationsteorier) dominerer på [...]?
+
+* Narrative structure: Hvem er "fjenden"? Hvem er "helten"? Hvad er "løsningen"?
+
+* (Cross-reference med kendte ekstremist-manifesters)
 
