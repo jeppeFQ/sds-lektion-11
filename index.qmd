@@ -3,7 +3,7 @@ title: "Dataanalyse I"
 subtitle: ""
 author: "Jeppe Fjeldgaard Qvist"
 date: today
-format: 
+format:
   revealjs:
     include-after-body: "resources/timer.html"
     navigation-mode: linear
@@ -14,7 +14,7 @@ format:
     smaller: true
     scrollable: true
     theme: default
-    include-in-header: 
+    include-in-header:
       - text: |
           <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
           <style>
@@ -37,34 +37,35 @@ format:
             overflow: visible !important;
           }
           </style>
-execute: 
+execute:
   echo: true
 ---
+
 
 ## Dagens program
 
 1. Sprogmodeller (resterende fra lektion 10)
-2. Gennemgange af meningsfulde eksempler på en SDS analyse 
+2. Fælles gennemgang af meningsfulde eksempler på en SDS (tekst)analyse 
 
 # Sprogmodeller (slides fra L10)
 
-## Analyse-eksempel 1
+## Analyse-eksempel $1$
 
-> Komparativ (diskurs/tekst-)analyse af ekstremistiske fora
+> Komparativ (diskurs-/tekst)analyse af (right wing)politiske fora
 
-* **Data**: 
+* **Data**: `dksamling.dk` og `trykkefrihed.dk`
     * *Struktur*: tekststørrelse, struktur, kvalitet
-    * *(Etiske) overvejelser*: Anonymisering? Forskeransvar?
-    * *Begrænsninger*: Bevidst bias; ikke repræsentativt for samfundet. Echo chamber-effekt maksimeret? Bevidst provokerende indhold? Bots? 
         * Hvad er kilderne? (mainstream media vs. alternativt medie/blog)
         * **Hvordan er data indsamlet? (web scraping, API, manuel)**
         * Hvilke bias kan være indbygget i udvælgelsen?
         * **Hvad er unit of analysis? (artikel, afsnit, sætning)**
-    * *Muligheder*: Forstå sproglige markører i radikaliserede kontekster. **Hvad ellers?** 
+    * *(Etiske) overvejelser*: Anonymisering? Forskeransvar?
+    * *Begrænsninger*: Bevidst bias; ikke repræsentativt for samfundet. Echo chamber-effekt maksimeret? Bevidst provokerende indhold? Bots? 
+    * *Muligheder*: **Hvad tænker I?**
 
 ---
 
-::: {style="font-size: 0.8em;"}
+::: {style="font-size: 0.6em;"}
 ```{python}
 #| echo: true
 import pandas as pd
@@ -89,13 +90,12 @@ df = df.reset_index(drop=True)
 
 # Første beskrivelse af data
 print(f"Total antal dokumenter: {len(df)}")
-print(f"\nDKsamling: {len(df[df['source']=='mainstream_media'])}")
-print(f"\nTrykkefrihed: {len(df[df['source']=='alternative_blogs'])}")
+print(f"\nDKsamling: {len(df[df['source']=='DKsamling'])}")
+print(f"\nTrykkefrihed: {len(df[df['source']=='Trykkefrihed'])}")
 print(f"\nManglende værdier:\n{df.isnull().sum()}")
 print(f"\nTomme tekster: {(df['text'].str.len() == 0).sum()}")
 print("\nEksempel på en tekst:\n")
-print(df['text'].iloc[0][:500])
-
+print(df['text'].iloc[0])
 ```
 :::
 
@@ -133,6 +133,27 @@ text_4 = re.sub(r'\s+', ' ', text_3).strip()
 text_clean = text_4.lower()
 ```
 
+<!---
+```{python}
+#| echo: true
+#| eval: false
+# Fjern HTML
+text_1 = re.sub(r'<[^>]+>', '', example_text)
+
+# Fjern URLs
+text_2 = re.sub(r'http\S+|www.\S+', '', text_1)
+
+# Fjern emails
+text_3 = re.sub(r'\S+@\S+', '', text_2)
+
+# Normaliser whitespace
+text_4 = re.sub(r'\s+', ' ', text_3).strip()
+
+# Lowercase
+text_clean = text_4.lower()
+```
+---->
+
 ---
 
 ```{python}
@@ -145,6 +166,7 @@ print("Clean tekst:")
 print(text_clean[:300])
 print(f"Længde: {len(text_clean)} tegn\n")
 ```
+
 
 ---
 
@@ -189,7 +211,6 @@ doc = nlp(sample)
 all_tokens = [token.text for token in doc]
 print(all_tokens)
 print(f"\nTotal: {len(all_tokens)} tokens\n")
-
 ```
 :::
 
@@ -248,6 +269,8 @@ print(f"\nKun NOUN + ADJ: {len(tokens_filtered)} tokens")
 
 > fjern stopord + lemmatisering (tokens_lemma)
 
+::: {style="font-size: 0.8em;"}
+
 ```{python}
 # Initialiser tom liste til tokens
 all_tokens = []
@@ -272,14 +295,16 @@ df['n_tokens'] = df['tokens'].apply(len)
 
 print(f"\nGennemsnitlig antal tokens: {df['n_tokens'].mean():.1f}")
 print(f"Median antal tokens: {df['n_tokens'].median():.1f}")
-print(f"Min: {df['n_tokens'].min()}, Max: {df['n_tokens'].max()}")
+print(f"Min: {df['n_tokens'].min()}, Max: {df['n_tokens'].max()}") #df = df[df['text'] != ""]
 ```
+
+::: 
 
 --- 
 
 ### Teknik-noter
 
-::: {style="font-size: 0.8em;"}
+::: {style="font-size: 0.6em;"}
 1. `batch_size = 50` betyder, at vi vil sende 50 tekster ad gangen til spaCy-pipelinen.
 2. `texts = ...` henter kolonnen text_clean fra DataFrame’en og konverterer den til en almindelig Python-liste.
 3. `nlp.pipe()` er spaCy’s hurtigste måde at køre pipeline’n på mange tekster. I stedet for at kalde nlp(text) én ad gangen, streamer pipe() teksterne igennem modellen i batches.
@@ -323,6 +348,9 @@ print(f"Unikke ord (vocabulary size): {len(word_counts)}")
 
 ---
 
+::: {style="font-size: 0.7em;"}
+
+
 ```{python}
 # Top 20 mest anvendte
 print("\nTop 20 mest anvendte ord:")
@@ -341,7 +369,10 @@ print(f"  Antal: {len(singletons)}")
 print(f"  Eksempler: {singletons[:10]}")
 ```
 
+:::
+
 ---
+
 #### Komparativt 
 
 ```{python}
@@ -363,6 +394,8 @@ print(f"Trykkefrihed vocab: {len(Trykkefrihed_vocab)}")
 
 ---
 
+::: {style="font-size: 0.8em;"}
+
 ```{python}
 print("\nTop 10 ord i DKsamling:")
 for word, count in DKsamling_vocab.most_common(10):
@@ -373,9 +406,13 @@ for word, count in Trykkefrihed_vocab.most_common(10):
     print(f"  {word}: {count}")
 ```
 
+:::
+
 ---
 
 ### Teknik-noter 
+
+::: {style="font-size: 0.7em;"}
 
 1. `DKsamling_tokens = []`, `Trykkefrihed_tokens = []` opretter to tomme Python-lister. De skal hver især indeholde alle tokens fra teksterne i den pågældende gruppe.
 2. `df.iterrows()` går række for række gennem dataframen.
@@ -386,7 +423,12 @@ for word, count in Trykkefrihed_vocab.most_common(10):
     * `.extend()` bruges i stedet for `.append()` fordi row['tokens'] selv er en liste af tokens.
 4. `Counter()` (fra collections-modulet) laver en ordfrekvens-ordbog. Den tæller hvor mange gange hvert token optræder. Resultatet er et dictionary-lignende objekt. 
 
-### Præ-processering af data III: feature extraction 
+:::
+
+
+## Præ-processering af data III: feature extraction 
+
+::: {style="font-size: 0.8em;"}
 
 ```{python}
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -394,11 +436,18 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 # Vi skal konvertere tokens tilbage til strings for sklearn kan arbejde med data
 df['tokens_string'] = df['tokens'].apply(lambda x: ' '.join(x))
 
+# Lav egen liste
+ord_fjernes = ['sige', 'ny', 'se', 'læser'] # Tilføj efter behov
+
+# Kombiner dem
+# all_stopwords = list(ENGLISH_STOP_WORDS) + ord_fjernes
+
 # Count Vectorizer (metode 1)
 count_vectorizer = CountVectorizer(
     max_features=1000,  # Top 1000 ord
     min_df=2,           # Skal forekomme i mindst 2 dokumenter
-    max_df=0.8          # Max i 80% af dokumenter
+    max_df=0.8,         # Max i 80% af dokumenter
+    stop_words=ord_fjernes         
 )
 
 X_counts = count_vectorizer.fit_transform(df['tokens_string'])
@@ -411,6 +460,8 @@ sparsity = 1.0 - (X_counts.nnz / (X_counts.shape[0] * X_counts.shape[1]))
 print(f"\nSparsity: {sparsity:.2%}")
 print("  (hvor stor andel af matrix er 0)")
 ```
+
+:::
 
 ---
 
@@ -471,6 +522,9 @@ for idx in top_tfidf_indices:
 
 ## $K$-means Clustering
 
+::: {style="font-size: 0.7em;"}
+
+
 ```{python}
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
@@ -502,9 +556,16 @@ elbow_df = pd.DataFrame({
 
 ```
 
+:::
+
 ---
 
 ```{python}
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
+from plotnine import *
+
 # Normaliser begge metrics til 0-1 range for sammenligning
 elbow_df['silhouette_norm'] = (elbow_df['silhouette'] - elbow_df['silhouette'].min()) / (elbow_df['silhouette'].max() - elbow_df['silhouette'].min())
 elbow_df['inertia_norm'] = (elbow_df['inertia'] - elbow_df['inertia'].min()) / (elbow_df['inertia'].max() - elbow_df['inertia'].min())
@@ -547,6 +608,8 @@ print(df['cluster'].value_counts().sort_index())
 
 ---
 
+::: {style="font-size: 0.7em;"}
+
 ```{python}
 # Find karakteristiske ord for hver cluster
 for cluster_num in range(best_k):
@@ -568,6 +631,8 @@ for cluster_num in range(best_k):
         print(f"   {word:20s}: {score:.3f}")
 ```
 
+:::
+
 ---
 
 ### Komparativt 
@@ -587,8 +652,9 @@ print(crosstab_pct.round(1))
 
 ## Visualisering 
 
+::: {style="font-size: 0.7em;"}
+
 ```{python}
-from plotnine import *
 from sklearn.decomposition import PCA
 
 # Reducer dimensioner for at kunne visualisere
@@ -611,14 +677,13 @@ plot_df = pd.DataFrame({
 
 * Vi har 1000 dimensioner (features) i vores data
 * Vi reducerer til kun 2 dimensioner for at kunne plotte
-* Det betyder vi MISTER 95.5% af informationen!
-* Dette er normalt for højdimensionelle tekstdata:
-    * Tekstdata er meget 'spredt' i mange dimensioner
-    * Det er svært at fange al information i kun 2D
-    * Vores plot er derfor en APPROKSIMATION
 * Men clustering arbejder i det fulde højdimensionelle rum. Så vores clusters er stadig valide, selvom plottet er simplificeret
 
+:::
+
 ---
+
+::: {style="font-size: 0.7em;"}
 
 ```{python}
 pca_full = PCA(n_components=50, random_state=42)  # Test med 50
@@ -632,8 +697,12 @@ for n in [2, 5, 10, 20, 30, 50]:
         print(f"  {n:2d} komponenter: {cumsum_var[n-1]:.1%}")
 ```
 
+::: 
+
 ```{python}
-# Simpel version uden forvirrende tærskler
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
 var_df = pd.DataFrame({
     'n_components': range(1, min(51, len(cumsum_var)+1)),
     'cum_variance': cumsum_var[:50]
@@ -643,7 +712,7 @@ p_var = (ggplot(var_df, aes(x='n_components', y='cum_variance'))
  + geom_line(color='steelblue', size=1.5)
  + geom_point(color='steelblue', size=2)
  + theme_minimal()
- + theme(figure_size=(10, 6))
+ + theme(figure_size=(6, 4))
  + scale_y_continuous(labels=lambda l: [f'{x:.0%}' for x in l])
  + labs(title='Kumulativ Forklaret Varians (PCA)',
         x='Antal PCA Komponenter',
@@ -655,6 +724,9 @@ p_var
 ---
 
 ```{python}
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
 # Scatter plot af clusters
 p1 = (ggplot(plot_df, aes(x='PC1', y='PC2', color='cluster', shape='source'))
  + geom_point(size=3, alpha=0.7)
@@ -672,6 +744,9 @@ p1
 ---
 
 ```{python}
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
 # Bar chart af cluster størrelser
 cluster_counts = df.groupby(['cluster', 'source']).size().reset_index(name='count')
 
@@ -690,6 +765,9 @@ p2
 ---
 
 ```{python}
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
 # Boxplot af tekstlængde per cluster
 p3 = (ggplot(df, aes(x='factor(cluster)', y='n_tokens', fill='factor(cluster)'))
  + geom_boxplot()
@@ -706,13 +784,16 @@ p3
 ---
 
 ```{python}
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
 # Bar chart af top ord
 p4 = (ggplot(vocab_df.head(30), 
              aes(x='reorder(word, frequency)', y='frequency'))
  + geom_col(fill='steelblue')
  + coord_flip()
  + theme_minimal()
- + theme(figure_size=(8, 10))
+ + theme(figure_size=(6, 6))
  + labs(title='Top 30 Mest Frekvente Ord (efter pre-processing)',
         x='',
         y='Frekvens'))
@@ -723,6 +804,9 @@ p4
 ---
 
 ```{python}
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
 # Sammenlign gennemsnitlig tekstlængde
 avg_length = df.groupby('source')['n_tokens'].mean().reset_index()
 
@@ -752,9 +836,91 @@ Se hvordan analysen er påvirket af:
 * Giver vores clusters mere/mindre mening?
     * Kan vi overhovedet fortolke dem substantielt hvis der er flere/færre k?
 
-Diskuter hvad kan forbedre analysen og hvilken vide analyse har bidraget med om de to tekstkilder?
+Diskuter hvad kan forbedre analysen og hvilken viden analyse har bidraget med om de to tekstkilder?
 
-## Analyse-eksempel 2
+<!-----
+
+import re, html, unicodedata
+
+    x = html.unescape(x)
+    x = re.sub(r'<[^>]+>', '', x)             # HTML
+    x = re.sub(r'http\S+|www.\S+', '', x)     # URLs
+    x = re.sub(r'\S+@\S+', '', x)             # Emails
+    x = re.sub(r'\d+', '', x)                 # Numbers
+    x = re.sub(r'[^\w\sÆØÅæøå]', '', x)       # Punctuation
+    x = re.sub(r'\s+', ' ', x).strip()        # Whitespace
+    x = unicodedata.normalize('NFKD', x)
+    x = x.lower()
+
+# Fjern tegnsætning
+tokens_no_punct = [token.text for token in doc if not token.is_punct]
+
+# Fjern stopord
+tokens_no_stop = [token.text for token in doc if not token.is_stop]
+
+# Fjern mellemrum
+tokens_no_space = [token.text for token in doc if not token.is_space]
+
+# Fjern tal
+tokens_no_nums = [token.text for token in doc if not token.like_num]
+
+# Behold kun alfabetiske tokens (ingen tal eller symboler)
+tokens_alpha = [token.text for token in doc if token.is_alpha]
+
+# Brug lemma i stedet for ordform
+lemmas = [token.lemma_ for token in doc]
+
+# Lemmatisér og fjern stopord + tegn
+lemmas_clean = [token.lemma_ for token in doc if not token.is_stop and not token.is_punct]
+
+# Lowercase alle tokens
+tokens_lower = [token.text.lower() for token in doc]
+
+# Behold kun substantiver
+tokens_nouns = [token.text for token in doc if token.pos_ == "NOUN"]
+
+# Behold kun verber
+tokens_verbs = [token.text for token in doc if token.pos_ == "VERB"]
+
+# Behold kun indholdsord (substantiver, verber, adjektiver, adverbier)
+tokens_content = [token.text for token in doc if token.pos_ in ["NOUN", "VERB", "ADJ", "ADV"]]
+
+# Fjern alle tokens, der er en del af en Named Entity
+tokens_no_ents = [token.text for token in doc if not token.ent_type_]
+
+# Erstat Named Entities med deres type (fx PERSON, ORG)
+tokens_masked_ents = [token.ent_type_ if token.ent_type_ else token.text for token in doc]
+
+# Fjern stopord, tegn, tal og Named Entities på én gang
+tokens_clean = [
+    token.lemma_
+    for token in doc
+    if not token.is_stop
+    and not token.is_punct
+    and not token.like_num
+    and not token.ent_type_
+]
+
+# Behold kun indholdsord og lemmatisér dem
+tokens_content_lemma = [
+    token.lemma_
+    for token in doc
+    if token.pos_ in ["NOUN", "VERB", "ADJ", "ADV"]
+]
+
+# Maskér tal med et symbol
+tokens_masked_nums = ["NUM" if token.like_num else token.text for token in doc]
+
+# Behold kun Named Entities (fx til emneanalyse)
+tokens_ents = [ent.text for ent in doc.ents]
+
+# Fjern meget korte ord (1-2 bogstaver)
+tokens_long = [token.text for token in doc if len(token.text) > 2]
+
+----->
+
+
+## Analyse-eksempel 2: Dekonstruktion af (politiske) narrativer
 
 > Hvilke narrativer (og konspirationsteorier) dominerer på [...]?
 
@@ -762,3 +928,672 @@ Diskuter hvad kan forbedre analysen og hvilken vide analyse har bidraget med om 
 
 * (Cross-reference med kendte ekstremist-manifesters)
 
+--- 
+
+### Named Entity Recognition - Hvem tales der om?
+
+
+::: {style="font-size: 0.6em;"}
+
+```{python}
+import pandas as pd
+import spacy
+from collections import Counter, defaultdict
+from tqdm import tqdm
+
+# Load spaCy model
+nlp = spacy.load("da_core_news_lg")
+
+# Extract entities fra alle dokumenter
+all_entities = []
+
+for idx, row in tqdm(df.iterrows(), total=len(df)):
+    doc = nlp(row['text_clean'])
+    
+    for ent in doc.ents:
+        all_entities.append({
+            'text': ent.text,
+            'label': ent.label_,
+            'source': row['source'],
+            'doc_id': idx
+        })
+
+entities_df = pd.DataFrame(all_entities)
+
+print(f"\nTotal entities fundet: {len(entities_df)}")
+print(f"\nEntity typer:")
+print(entities_df['label'].value_counts())
+```
+
+:::
+
+---
+
+::: {style="font-size: 0.7em;"}
+
+```{python}
+# Filter til relevante entity typer
+relevant_entities = entities_df[entities_df['label'].isin(['PER', 'ORG', 'LOC'])]
+
+# Count per entity type og source
+for label in ['PER', 'ORG']:
+    print(f"\n{label} (Personer/Organisationer):")
+    
+    for source in ['DKsamling', 'Trykkefrihed']:
+        entities_source = relevant_entities[
+            (relevant_entities['label'] == label) & 
+            (relevant_entities['source'] == source)
+        ]
+        
+        top_entities = entities_source['text'].value_counts().head(10)
+        
+        print(f"\n  {source}:")
+        for entity, count in top_entities.items():
+            print(f"    {entity:30s}: {count:3d}")
+```
+
+::: 
+
+---
+
+::: {style="font-size: 0.7em;"}
+
+```{python}
+print("\nTop personer:")
+person_entities = entities_df[entities_df['label'] == 'PER']
+person_counts = person_entities['text'].value_counts().head(20)
+print(person_counts)
+
+print("\nTop organisationer:")
+org_entities = entities_df[entities_df['label'] == 'ORG']
+org_counts = org_entities['text'].value_counts().head(20)
+print(org_counts)
+```
+
+:::
+
+---
+
+```{python}
+# Definer mapping af variationer til canonical form
+entity_mapping = {
+    # Tommy Robinson variationer
+    'robinson': 'tommy robinson',
+    'tommy robinsons': 'tommy robinson',
+    
+    # Trump variationer
+    'trump': 'donald trump',
+    'donald j. trump': 'donald trump',
+    'donald j trump': 'donald trump',
+    
+    # Andre tænkte eksempler eksempler
+    'merkel': 'angela merkel',
+    'frederiksen': 'mette frederiksen',
+    'løkke': 'lars løkke rasmussen',
+    
+    # Tilføj hvor nødvendigt ... 
+}
+
+entities_df['text'] = entities_df['text'].replace(entity_mapping)
+
+```
+
+---
+
+```{python}
+# Definer entities vi vil fjerne
+entities_to_remove = [
+    'charlie hebdo',  # ikke en person
+    'eu',  # For generisk
+    'dk',  # Forkortelse
+    'usa'  # Land, ikke person
+    # osv
+]
+
+# Filtrer dem ud
+entities_df = entities_df[
+    ~entities_df['text'].isin(entities_to_remove)
+]
+
+# Se resultat
+print("\n\nNye top entities:")
+top_persons = entities_df[entities_df['label'] == 'PER']['text'].value_counts().head(10)
+print(top_persons)
+```
+
+---
+
+::: {style="font-size: 0.7em;"}
+
+```{python}
+# Filter til relevante entity typer (SAMME KODE IGEN!)
+relevant_entities = entities_df[entities_df['label'].isin(['PER', 'ORG', 'LOC'])]
+
+# Count per entity type og source
+for label in ['PER', 'ORG']:
+    print(f"\n{label} (Personer/Organisationer):")
+    
+    for source in ['DKsamling', 'Trykkefrihed']:
+        entities_source = relevant_entities[
+            (relevant_entities['label'] == label) & 
+            (relevant_entities['source'] == source)
+        ]
+        
+        top_entities = entities_source['text'].value_counts().head(10)
+        
+        print(f"\n  {source}:")
+        for entity, count in top_entities.items():
+            print(f"    {entity:30s}: {count:3d}")
+```
+
+:::
+
+---
+
+::: {style="font-size: 0.7em;"}
+
+```{python}
+print("\nTop personer:")
+person_entities = entities_df[entities_df['label'] == 'PER']
+person_counts = person_entities['text'].value_counts().head(20)
+print(person_counts)
+
+print("\nTop organisationer:")
+org_entities = entities_df[entities_df['label'] == 'ORG']
+org_counts = org_entities['text'].value_counts().head(20)
+print(org_counts)
+```
+
+:::
+
+## Hvordan tales der om aktørerne?
+
+::: {style="font-size: 0.6em;"}
+
+```{python}
+# Vælg top aktører at analysere
+top_persons = person_counts.head(5).index.tolist()
+top_orgs = org_counts.head(5).index.tolist()
+
+# Extract kontekst (ord før og efter entity)
+context_words = defaultdict(list)
+
+for idx, row in tqdm(df.iterrows(), total=len(df), desc="Extracting context"):
+    doc = nlp(row['text_clean'])
+    
+    for ent in doc.ents:
+        if ent.text.lower() in top_persons + top_orgs:
+            # Hent 5 ord før og efter
+            start_idx = max(0, ent.start - 5)
+            end_idx = min(len(doc), ent.end + 5)
+            
+            context_tokens = doc[start_idx:end_idx]
+            
+            # Gem ord (undtagen entity selv)
+            for token in context_tokens:
+                if (not token.is_stop and 
+                    not token.is_punct and 
+                    token.i not in range(ent.start, ent.end)):
+                    context_words[ent.text.lower()].append(token.lemma_.lower())
+
+# Vis hyppigste kontekst-ord
+for entity in top_persons[:3]:  # Vis top 3 personer
+    if entity in context_words:
+        words = Counter(context_words[entity])
+        print(f"\n{entity.upper()}:")
+        for word, count in words.most_common(15):
+            print(f"   {word:20s}: {count}")
+```
+
+:::
+
+---
+
+::: {style="font-size: 0.6em;"}
+
+```{python}
+# Manuel liste af positive/negative ord (kan udvides!)
+positive_words = [
+    'god', 'godt', 'bedre', 'støtte', 'hjælp', 'hjælpe', 
+    'succes', 'vinder', 'vigtig', 'stærk', 'effektiv',
+    'demokrati', 'frihed', 'værdig', 'ansvarlig'
+]
+
+negative_words = [
+    'dårlig', 'dårligt', 'værre', 'problem', 'krise', 'fejl',
+    'hadsk', 'farlig', 'trussel', 'angreb', 'katastrofe',
+    'populist', 'ekstrem', 'radikal', 'fascisme', 'autoritær'
+]
+
+for entity in top_persons[:3]:
+    if entity in context_words:
+        words = context_words[entity]
+        
+        pos_count = sum(1 for w in words if w in positive_words)
+        neg_count = sum(1 for w in words if w in negative_words)
+        
+        print(f"\n{entity.upper()}:")
+        print(f"  Positive ord: {pos_count}")
+        print(f"  Negative ord: {neg_count}")
+        
+        # Vis eksempler
+        pos_examples = [w for w in words if w in positive_words]
+        neg_examples = [w for w in words if w in negative_words]
+        
+        if pos_examples:
+            print(f"  Positive: {Counter(pos_examples).most_common(5)}")
+        if neg_examples:
+            print(f"  Negative: {Counter(neg_examples).most_common(5)}")
+```
+
+:::
+
+---
+
+### Narrativer 
+
+::: {style="font-size: 0.6em;"}
+
+```{python}
+# Problem/trussel ord (indikerer "fjende")
+problem_words = [
+    'problem', 'trussel', 'krise', 'fare', 'farlig', 'katastrofe',
+    'angreb', 'ødelægge', 'underminere', 'svigter', 'fejler',
+    'populist', 'ekstremist', 'radikal', 'hadsk'
+]
+
+# Løsning/helt ord (indikerer "helt")
+solution_words = [
+    'løsning', 'løse', 'hjælp', 'hjælpe', 'redde', 'beskytte',
+    'forsvare', 'støtte', 'sikre', 'forbedre', 'styrke',
+    'demokrati', 'frihed', 'ansvarlig', 'leder', 'vision'
+]
+
+# Count co-occurrences med entities
+entity_problem_score = defaultdict(int)
+entity_solution_score = defaultdict(int)
+
+for entity in top_persons + top_orgs:
+    if entity in context_words:
+        words = context_words[entity]
+        
+        entity_problem_score[entity] = sum(1 for w in words if w in problem_words)
+        entity_solution_score[entity] = sum(1 for w in words if w in solution_words)
+
+# Visualiser som dataframe
+narrative_df = pd.DataFrame({
+    'entity': list(entity_problem_score.keys()),
+    'problem_words': list(entity_problem_score.values()),
+    'solution_words': list(entity_solution_score.values())
+})
+
+narrative_df['net_framing'] = narrative_df['solution_words'] - narrative_df['problem_words']
+narrative_df = narrative_df.sort_values('net_framing')
+
+print("\nNARRATIV FRAMING (negativ = 'fjende', positiv = 'helt'):")
+print(narrative_df)
+```
+
+:::
+
+---
+
+::: {style="font-size: 0.6em;"}
+
+```{python}
+# Gentag men split efter source
+
+for source in ['DKsamling', 'Trykkefrihed']:
+    print(f"\n{source.upper()}:")
+    
+    # Filter entities fra denne kilde
+    source_entities = entities_df[entities_df['source'] == source]
+    source_top_persons = source_entities[
+        source_entities['label'] == 'PER'
+    ]['text'].value_counts().head(5).index.tolist()
+    
+    print(f"\nTop personer: {source_top_persons}")
+    
+    # Extract context for denne kilde
+    source_context = defaultdict(list)
+    
+    for idx, row in df[df['source'] == source].iterrows():
+        doc = nlp(row['text_clean'])
+        
+        for ent in doc.ents:
+            if ent.text.lower() in source_top_persons:
+                start_idx = max(0, ent.start - 5)
+                end_idx = min(len(doc), ent.end + 5)
+                
+                context_tokens = doc[start_idx:end_idx]
+                
+                for token in context_tokens:
+                    if (not token.is_stop and 
+                        not token.is_punct and 
+                        token.i not in range(ent.start, ent.end)):
+                        source_context[ent.text.lower()].append(token.lemma_.lower())
+    
+    # Score
+    print("\nFraming scores:")
+    for entity in source_top_persons[:3]:
+        if entity in source_context:
+            words = source_context[entity]
+            prob_score = sum(1 for w in words if w in problem_words)
+            sol_score = sum(1 for w in words if w in solution_words)
+            
+            print(f"  {entity:20s}: problem={prob_score:2d}, solution={sol_score:2d}, net={sol_score-prob_score:+3d}")
+```
+
+:::
+
+---
+
+### Identificer diskuser/temaer 
+
+```{python}
+# Udvid keyword lister med relaterede termer
+threat_keywords = [
+    'trussel', 'fare', 'farlig', 'krise', 'problem', 'katastrofe',
+    'invasion', 'immigration', 'immigrant', 'flygtning', 'migrant',
+    'islam', 'terror', 'kriminalitet', 'vold', 'angreb',
+    'populisme', 'populist', 'ekstremisme', 'fascisme', 'had'
+]
+
+solution_keywords = [
+    'løsning', 'demokrati', 'frihed', 'sikkerhed', 'beskyttelse',
+    'grænse', 'kontrol', 'lov', 'orden', 'ansvar',
+    'national', 'nationalstat', 'suverænitet', 'identitet',
+    'integration', 'assimilering', 'værdier', 'kultur'
+]
+
+eu_keywords = [
+    'eu', 'europa', 'bruxelles', 'unionen', 'europæisk',
+    'fælles', 'overstatlig', 'samarbejde', 'integration'
+]
+```
+
+---
+
+::: {style="font-size: 0.6em;"}
+
+```{python}
+for source in ['DKsamling', 'Trykkefrihed']:
+    print(f"\n{source.upper()}:")
+    
+    # Get all tokens from this source
+    source_tokens = []
+    for tokens in df[df['source'] == source]['tokens']:
+        source_tokens.extend(tokens)
+    
+    total_tokens = len(source_tokens)
+    
+    # Count keywords
+    threat_count = sum(1 for t in source_tokens if t in threat_keywords)
+    solution_count = sum(1 for t in source_tokens if t in solution_keywords)
+    eu_count = sum(1 for t in source_tokens if t in eu_keywords)
+    
+    print(f"  Total tokens: {total_tokens}")
+    print(f"  Trussel-ord: {threat_count} ({threat_count/total_tokens*100:.2f}%)")
+    print(f"  Løsnings-ord: {solution_count} ({solution_count/total_tokens*100:.2f}%)")
+    print(f"  EU-ord: {eu_count} ({eu_count/total_tokens*100:.2f}%)")
+    
+    # Hvilke specifikke ord?
+    threat_counter = Counter([t for t in source_tokens if t in threat_keywords])
+    solution_counter = Counter([t for t in source_tokens if t in solution_keywords])
+    
+    print(f"\n  Top trussel-ord: {threat_counter.most_common(5)}")
+    print(f"  Top løsnings-ord: {solution_counter.most_common(5)}")
+```
+
+:::
+
+## Hvem nævnes sammen med hvem?
+
+::: {style="font-size: 0.6em;"}
+
+```{python}
+# Build co-occurrence matrix
+from itertools import combinations
+
+# Get entities per document
+doc_entities = defaultdict(list)
+
+for idx, row in entities_df.iterrows():
+    if row['label'] in ['PER', 'ORG']:
+        doc_entities[row['doc_id']].append(row['text'])
+
+# Count co-occurrences
+cooccurrence_counts = Counter()
+
+for doc_id, entities in doc_entities.items():
+    # Get unique entities in doc
+    unique_entities = list(set(entities))
+    
+    # Count all pairs
+    for ent1, ent2 in combinations(sorted(unique_entities), 2):
+        cooccurrence_counts[(ent1, ent2)] += 1
+
+# Vis top co-occurrences
+print("Top 20 entity par der nævnes sammen:")
+for (ent1, ent2), count in cooccurrence_counts.most_common(20):
+    print(f"  {ent1:25s} <-> {ent2:25s}: {count}")
+```
+
+:::
+
+---
+
+::: {style="font-size: 0.6em;"}
+
+```{python}
+
+for source in ['DKsamling', 'Trykkefrihed']:
+    print(f"\n{source.upper()}:")
+    
+    # Filter til denne kilde
+    source_doc_entities = defaultdict(list)
+    
+    source_entity_rows = entities_df[entities_df['source'] == source]
+    for idx, row in source_entity_rows.iterrows():
+        if row['label'] in ['PER', 'ORG']:
+            source_doc_entities[row['doc_id']].append(row['text'])
+    
+    # Count co-occurrences
+    source_cooccurrence = Counter()
+    
+    for doc_id, entities in source_doc_entities.items():
+        unique_entities = list(set(entities))
+        
+        for ent1, ent2 in combinations(sorted(unique_entities), 2):
+            source_cooccurrence[(ent1, ent2)] += 1
+    
+    print(f"\nTop 10 par:")
+    for (ent1, ent2), count in source_cooccurrence.most_common(10):
+        print(f"  {ent1:25s} <-> {ent2:25s}: {count}")
+```
+
+:::
+
+## Visualisering 
+
+```{python}
+# Top entities per source
+top_n = 10
+
+DKsamling_entities = entities_df[
+    (entities_df['source'] == 'DKsamling') & 
+    (entities_df['label'] == 'PER')
+]['text'].value_counts().head(top_n)
+
+Trykkefrihed_entities = entities_df[
+    (entities_df['source'] == 'Trykkefrihed') & 
+    (entities_df['label'] == 'PER')
+]['text'].value_counts().head(top_n)
+
+# Kombiner til plot
+entity_comparison = pd.DataFrame({
+    'entity': list(DKsamling_entities.index) + list(Trykkefrihed_entities.index),
+    'count': list(DKsamling_entities.values) + list(Trykkefrihed_entities.values),
+    'source': ['DKsamling Media']*top_n + ['Alternative Blogs']*top_n
+})
+
+```
+
+---
+
+
+```{python}
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
+p1 = (ggplot(entity_comparison, aes(x='reorder(entity, count)', y='count', fill='source'))
+ + geom_col()
+ + coord_flip()
+ + facet_wrap('~source', scales='free_y')
+ + theme_minimal()
+ + theme(figure_size=(6, 6))
+ + labs(title='Top Personer Nævnt per Kilde',
+        x='',
+        y='Antal nævnelser')
+ + guides(fill=False))
+
+p1
+```
+
+---
+
+```{python}
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
+
+# Brug narrative_df fra tidligere
+# Filter til dem med nok nævnelser
+narrative_plot_df = narrative_df[
+    (narrative_df['problem_words'] + narrative_df['solution_words']) >= 5
+].copy()
+
+narrative_plot_df['entity_short'] = narrative_plot_df['entity'].str[:30]
+
+p2 = (ggplot(narrative_plot_df, aes(x='reorder(entity_short, net_framing)', y='net_framing'))
+ + geom_col(aes(fill='net_framing'))
+ + coord_flip()
+ + scale_fill_gradient2(low='red', mid='gray', high='green', midpoint=0)
+ + theme_minimal()
+ + theme(figure_size=(6, 6))
+ + labs(title='Narrativ Framing af Aktører',
+        subtitle='Negativ = "fjende" framing, Positiv = "helt" framing',
+        x='',
+        y='Net Framing Score')
+ + guides(fill=False))
+
+p2
+```
+
+---
+
+
+```{python}
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
+# Beregn keyword densitet per kilde
+discourse_data = []
+
+for source in ['DKsamling', 'Trykkefrihed']:
+    source_tokens = []
+    for tokens in df[df['source'] == source]['tokens']:
+        source_tokens.extend(tokens)
+    
+    total = len(source_tokens)
+    
+    discourse_data.append({
+        'source': source,
+        'category': 'Trussel/Problem',
+        'percentage': sum(1 for t in source_tokens if t in threat_keywords) / total * 100
+    })
+    
+    discourse_data.append({
+        'source': source,
+        'category': 'Løsning/Handling',
+        'percentage': sum(1 for t in source_tokens if t in solution_keywords) / total * 100
+    })
+    
+    discourse_data.append({
+        'source': source,
+        'category': 'EU/Europa',
+        'percentage': sum(1 for t in source_tokens if t in eu_keywords) / total * 100
+    })
+
+discourse_df = pd.DataFrame(discourse_data)
+
+p3 = (ggplot(discourse_df, aes(x='category', y='percentage', fill='source'))
+ + geom_col(position='dodge')
+ + theme_minimal()
+ + theme(figure_size=(10, 6), axis_text_x=element_text(angle=0))
+ + labs(title='Tematisk Diskurs Sammenligning',
+        x='',
+        y='Procent af total tokens',
+        fill='Kilde'))
+
+p3
+```
+
+---
+
+
+```{python}
+#| code-fold: true
+#| code-summary: "Vis kode"
+#| code-overflow: scroll
+# Lav en simpel heatmap af top co-occurrences
+# Tag top 10 entities
+top_entities_for_network = person_counts.head(10).index.tolist()
+
+# Build matrix
+cooc_matrix = pd.DataFrame(0, 
+                           index=top_entities_for_network,
+                           columns=top_entities_for_network)
+
+for (ent1, ent2), count in cooccurrence_counts.items():
+    if ent1 in top_entities_for_network and ent2 in top_entities_for_network:
+        cooc_matrix.loc[ent1, ent2] = count
+        cooc_matrix.loc[ent2, ent1] = count
+
+# Reshape til long format for plotnine
+cooc_long = []
+for i in cooc_matrix.index:
+    for j in cooc_matrix.columns:
+        if i < j:  # Kun upper triangle for at undgå duplicates
+            cooc_long.append({
+                'entity1': i,
+                'entity2': j,
+                'count': cooc_matrix.loc[i, j]
+            })
+
+cooc_plot_df = pd.DataFrame(cooc_long)
+cooc_plot_df = cooc_plot_df[cooc_plot_df['count'] > 0]  # Kun eksisterende forbindelser
+
+p4 = (ggplot(cooc_plot_df, aes(x='entity1', y='entity2', fill='count'))
+ + geom_tile()
+ + scale_fill_gradient(low='white', high='darkblue')
+ + theme_minimal()
+ + theme(figure_size=(6, 6),
+         axis_text_x=element_text(angle=45, hjust=1))
+ + labs(title='Co-occurrence Network: Hvem nævnes sammen?',
+        x='', y='',
+        fill='Co-occurrences'))
+
+p4
+```
+
+## Øvelse 
+
+Se hvordan analysen er påvirket af: 
+
+* Pre-processing (som første øvelse)
+* "Rengøring" af vores data (hvilke entities beholder vi)
+
+Diskuter hvad kan forbedre analysen og hvilken viden analysen har bidraget med om de to tekstkilder?
+
+Diskuter hvad denne metode kan som den anden ikke kan. Skal man gå til tekstdataen på en anden måde? 
