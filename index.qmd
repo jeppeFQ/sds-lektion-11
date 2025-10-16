@@ -72,9 +72,9 @@ import pandas as pd
 import numpy as np
 
 # HVAD GØR VI HER?
-df1 = pd.read_json('/Users/jeppefl/Library/CloudStorage/OneDrive-AalborgUniversitet/01_work/01_undervisning/02_sds1/03_data/right-wing-sites/DKSamling_20230627.json')
+df1 = pd.read_json('/Users/jeppe/Library/CloudStorage/OneDrive-AalborgUniversitet/01_work/01_undervisning/02_sds1/03_data/right-wing-sites/DKSamling_20230627.json')
 
-df2 = pd.read_json('/Users/jeppefl/Library/CloudStorage/OneDrive-AalborgUniversitet/01_work/01_undervisning/02_sds1/03_data/right-wing-sites/trykkefrihed_20220824.json')
+df2 = pd.read_json('/Users/jeppe/Library/CloudStorage/OneDrive-AalborgUniversitet/01_work/01_undervisning/02_sds1/03_data/right-wing-sites/trykkefrihed_20220824.json')
 
 # HVAD GØR VI HER?
 df1['source'] = 'DKsamling'
@@ -614,7 +614,8 @@ print(df['cluster'].value_counts().sort_index())
 # Find karakteristiske ord for hver cluster
 for cluster_num in range(best_k):
     # Find alle dokumenter i denne cluster
-    cluster_docs = X_tfidf[df['cluster'] == cluster_num]
+    mask = (df['cluster'] == cluster_num).to_numpy()
+    cluster_docs = X_tfidf[mask]
     
     # Beregn gennemsnitlig TF-IDF værdi per ord
     avg_tfidf = cluster_docs.mean(axis=0).A1
@@ -625,10 +626,11 @@ for cluster_num in range(best_k):
     top_scores = [avg_tfidf[idx] for idx in top_indices]
     
     # Print
-    n_docs = (df['cluster'] == cluster_num).sum()
-    print(f"\n CLUSTER {cluster_num} (n={n_docs} dokumenter)")
+    n_docs = mask.sum()
+    print(f"\nCLUSTER {cluster_num} (n={n_docs} dokumenter)")
     for word, score in zip(top_words, top_scores):
         print(f"   {word:20s}: {score:.3f}")
+
 ```
 
 :::
@@ -838,8 +840,10 @@ Se hvordan analysen er påvirket af:
 
 Diskuter hvad kan forbedre analysen og hvilken viden analyse har bidraget med om de to tekstkilder?
 
-<!-----
+---
 
+
+```
 import re, html, unicodedata
 
     x = html.unescape(x)
@@ -851,7 +855,13 @@ import re, html, unicodedata
     x = re.sub(r'\s+', ' ', x).strip()        # Whitespace
     x = unicodedata.normalize('NFKD', x)
     x = x.lower()
+```
 
+---
+
+::: {style="font-size: 0.6em;"}
+
+```
 # Fjern tegnsætning
 tokens_no_punct = [token.text for token in doc if not token.is_punct]
 
@@ -888,9 +898,15 @@ tokens_content = [token.text for token in doc if token.pos_ in ["NOUN", "VERB", 
 # Fjern alle tokens, der er en del af en Named Entity
 tokens_no_ents = [token.text for token in doc if not token.ent_type_]
 
-# Erstat Named Entities med deres type (fx PERSON, ORG)
-tokens_masked_ents = [token.ent_type_ if token.ent_type_ else token.text for token in doc]
+```
 
+:::
+
+---
+
+::: {style="font-size: 0.6em;"}
+
+```
 # Fjern stopord, tegn, tal og Named Entities på én gang
 tokens_clean = [
     token.lemma_
@@ -916,9 +932,9 @@ tokens_ents = [ent.text for ent in doc.ents]
 
 # Fjern meget korte ord (1-2 bogstaver)
 tokens_long = [token.text for token in doc if len(token.text) > 2]
+```
 
------>
-
+:::
 
 ## Analyse-eksempel 2: Dekonstruktion af (politiske) narrativer
 
@@ -1057,6 +1073,57 @@ entities_df = entities_df[
 
 # Se resultat
 print("\n\nNye top entities:")
+top_persons = entities_df[entities_df['label'] == 'PER']['text'].value_counts().head(10)
+print(top_persons)
+```
+
+---
+
+::: {style="font-size: 0.7em;"}
+
+```{python}
+# Filter til relevante entity typer (SAMME KODE IGEN!)
+relevant_entities = entities_df[entities_df['label'].isin(['PER', 'ORG', 'LOC'])]
+
+# Count per entity type og source
+for label in ['PER', 'ORG']:
+    print(f"\n{label} (Personer/Organisationer):")
+    
+    for source in ['DKsamling', 'Trykkefrihed']:
+        entities_source = relevant_entities[
+            (relevant_entities['label'] == label) & 
+            (relevant_entities['source'] == source)
+        ]
+        
+        top_entities = entities_source['text'].value_counts().head(10)
+        
+        print(f"\n  {source}:")
+        for entity, count in top_entities.items():
+            print(f"    {entity:30s}: {count:3d}")
+```
+
+:::
+
+---
+
+```{python}
+# Definer entities der skal reklassificeres (skal matche exact case)
+reclassify_map = {
+    'hong kong': 'LOC',
+    'Hong Kong': 'LOC',  
+    'usa': 'LOC',
+    'USA': 'LOC',
+    'dk': 'LOC',
+    'DK': 'LOC',
+    'eu': 'ORG',
+    'EU': 'ORG'
+}
+
+# Lav en mask for hvilke rækker der skal ændres
+mask = entities_df['text'].isin(reclassify_map.keys())
+entities_df.loc[mask, 'label'] = entities_df.loc[mask, 'text'].map(reclassify_map)
+
+# Filtrer PER entities
 top_persons = entities_df[entities_df['label'] == 'PER']['text'].value_counts().head(10)
 print(top_persons)
 ```
